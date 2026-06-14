@@ -96,14 +96,31 @@ export default function App() {
       const res = await fetch('/api/geometry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ objectId: parcel.objectId, county: currentCounty }),
+        body: JSON.stringify({ objectId: parcel.objectId, parcelNo: parcel.id, county: currentCounty }),
       })
       const data = await res.json()
+      const update = {}
       if (data.geometry) {
         geometryCache.current[parcel.id] = data.geometry
-        setSelectedParcel(p => p?.id === parcel.id ? { ...p, geometry: data.geometry } : p)
-        // Also update in parcels array so MapView can render the polygon
-        setParcels(ps => ps.map(p => p.id === parcel.id ? { ...p, geometry: data.geometry } : p))
+        update.geometry = data.geometry
+      }
+      if (data.enrichment) {
+        const e = data.enrichment
+        if (e.assessed) update.assessed = e.assessed
+        if (e.acres) update.acres = e.acres
+        if (e.sqft) update.sqft = e.sqft
+        if (e.yearBuilt) update.yearBuilt = e.yearBuilt
+        if (e.lastSaleYear) update.lastSaleYear = e.lastSaleYear
+        if (e.propertyReportUrl) update.propertyReportUrl = e.propertyReportUrl
+        if (e.owner) {
+          update.owner = { ...parcel.owner, ...e.owner }
+        }
+      }
+      if (Object.keys(update).length > 0) {
+        setSelectedParcel(p => p?.id === parcel.id ? { ...p, ...update } : p)
+        if (update.geometry) {
+          setParcels(ps => ps.map(p => p.id === parcel.id ? { ...p, geometry: update.geometry } : p))
+        }
       }
     } catch (err) {
       console.warn('[geometry] fetch failed:', err.message)

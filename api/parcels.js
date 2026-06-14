@@ -5,8 +5,8 @@
 import { getMockParcels } from './mock-data.js'
 
 export const ARCGIS_ENDPOINTS = {
-  // ProVal layer has assessed value, owner mailing address, sq footage, and property use
-  Hamilton: 'https://gis1.hamiltoncounty.in.gov/arcgis/rest/services/ProVal/ProValMap/MapServer/0/query',
+  // FeatureServer for fast bbox search (returnCentroid supported)
+  Hamilton: 'https://gis1.hamiltoncounty.in.gov/arcgis/rest/services/HamCoParcelsPublic/FeatureServer/0/query',
   Boone: 'https://gis.boonecounty.in.gov/arcgis/rest/services/Parcels/FeatureServer/0/query',
   Tippecanoe: 'https://gis.tippecanoe.in.gov/arcgis/rest/services/Parcels/MapServer/0/query',
   Monroe: 'https://gishub-monroegis.hub.arcgis.com/datasets/MonroeGIS::parcels/FeatureServer/0/query',
