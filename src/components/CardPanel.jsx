@@ -73,10 +73,17 @@ function SummaryTab({ parcel }) {
       )}
       <KV k="Type" v={parcel.type} />
       <KV k="Owner Entity" v={parcel.owner?.entity || '—'} />
-      {parcel.lastSaleYear && <KV k="Last Sale Year" v={parcel.lastSaleYear} />}
+      {parcel.lastSaleYear && <KV k="Last Transfer" v={parcel.lastSaleYear} />}
       {parcel.acres && <KV k="Lot Size" v={fmtAcres(parcel.acres)} />}
       {parcel.sqft > 0 && <KV k="Building SF" v={parcel.sqft.toLocaleString() + ' sq ft'} />}
+      {parcel.yearBuilt && <KV k="Year Built" v={parcel.yearBuilt} />}
       <KV k="Parcel ID" v={parcel.id} />
+      {parcel.propertyReportUrl && (
+        <a href={parcel.propertyReportUrl} target="_blank" rel="noopener noreferrer"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 11, color: '#e8925a', fontWeight: 600, textDecoration: 'none' }}>
+          🔗 View County Property Report →
+        </a>
+      )}
     </div>
   )
 }

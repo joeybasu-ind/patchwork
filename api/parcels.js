@@ -5,7 +5,8 @@
 import { getMockParcels } from './mock-data.js'
 
 export const ARCGIS_ENDPOINTS = {
-  Hamilton: 'https://gis1.hamiltoncounty.in.gov/arcgis/rest/services/HamCoParcelsPublic/FeatureServer/0/query',
+  // ProVal layer has assessed value, owner mailing address, sq footage, and property use
+  Hamilton: 'https://gis1.hamiltoncounty.in.gov/arcgis/rest/services/ProVal/ProValMap/MapServer/0/query',
   Boone: 'https://gis.boonecounty.in.gov/arcgis/rest/services/Parcels/FeatureServer/0/query',
   Tippecanoe: 'https://gis.tippecanoe.in.gov/arcgis/rest/services/Parcels/MapServer/0/query',
   Monroe: 'https://gishub-monroegis.hub.arcgis.com/datasets/MonroeGIS::parcels/FeatureServer/0/query',
@@ -65,18 +66,26 @@ function normalizeFeature(feature, index, anchorLat, anchorLng) {
   const lat = cx ? cx.y : null
   const lng = cx ? cx.x : null
 
-  // Hamilton County real field names + generic fallbacks for other counties
+  // Hamilton County ProVal field names + generic fallbacks for other counties
   const rawAddress = get(attrs, 'LOCADDRESS', 'SITUS_ADDRESS', 'ADDRESS', 'PROP_ADDR', 'SITE_ADDRESS') || 'Address on file'
   const rawCity = get(attrs, 'LOCCITY', 'SITUS_CITY', 'CITY', 'PROP_CITY') || 'Indiana'
-  const rawOwner = get(attrs, 'DEEDEDOWNR', 'OWNER', 'OWNER_NAME', 'OWNER1', 'GRANTEE_NAME', 'TAX_NAME') || 'Owner of record'
-  const assessed = parseFloat(get(attrs, 'AV_TOTAL', 'ASSESSED_VALUE', 'TOTAL_AV', 'NET_AV', 'ASSD_TOTAL') || 0) || null
-  const rawZoning = get(attrs, 'ZONE_CODE', 'ZONING', 'ZONING_CODE', 'ZONE', 'CURRENT_ZONE') || ''
-  const acres = parseFloat(get(attrs, 'ACRES', 'ACREAGE', 'CALC_ACRES', 'GIS_ACRES') || 0)
+  const rawOwner = get(attrs, 'OWNNAME', 'DEEDEDOWNR', 'OWNER', 'OWNER_NAME', 'OWNER1', 'GRANTEE_NAME') || 'Owner of record'
+  const assessed = parseFloat(get(attrs, 'AVTOTGROSS', 'AV_TOTAL', 'ASSESSED_VALUE', 'TOTAL_AV', 'NET_AV') || 0) || null
+  const rawZoning = get(attrs, 'PROPUSE', 'ZONE_CODE', 'ZONING', 'ZONING_CODE', 'ZONE', 'CURRENT_ZONE') || ''
+  const acres = parseFloat(get(attrs, 'DEEDACRES', 'ACRES', 'ACREAGE', 'CALC_ACRES', 'GIS_ACRES') || 0)
   const objectId = get(attrs, 'OBJECTID', 'FID', 'OID') || index
   const parcelNo = get(attrs, 'FMTPRCLNO', 'PARCEL_NO', 'PARCEL_ID', 'PARCEL_NUMBER', 'APN', 'PIN') || `parcel-${objectId}`
   const lastSalePrice = parseFloat(get(attrs, 'SALE_PRICE', 'LAST_SALE_PRICE', 'DEED_AMOUNT', 'TRANSFER_PRICE') || 0) || null
   const lastSaleDate = get(attrs, 'LSTXFRDATE', 'SALE_DATE', 'LAST_SALE_DATE', 'DEED_DATE', 'TRANSFER_DATE')
-  const ownerAddr = get(attrs, 'OWNER_ADDRESS', 'OWNER_ADDR', 'MAIL_ADDRESS', 'MAIL_ADDR') || null
+  const sqftComm = parseInt(get(attrs, 'sq_ft_comm', 'SQ_FT_COMM') || 0) || null
+  const yearBuilt = get(attrs, 'year_built', 'YEAR_BUILT') || null
+  const propertyReportUrl = get(attrs, 'PROPERTYREPORT') || null
+  const ownerAddr = [
+    get(attrs, 'OWNADDRESS', 'OWNER_ADDRESS', 'MAIL_ADDRESS'),
+    get(attrs, 'OWNCITY'),
+    get(attrs, 'OWNSTATE'),
+    get(attrs, 'OWNZIP'),
+  ].filter(Boolean).join(', ') || null
 
   const zoning = normalizeZoning(rawZoning)
   const lastSaleYear = lastSaleDate ? new Date(lastSaleDate).getFullYear() : null
@@ -96,9 +105,11 @@ function normalizeFeature(feature, index, anchorLat, anchorLng) {
     address: rawAddress,
     city: city ? `${city}, IN` : 'Indiana',
     type: deriveType(zoning, attrs),
-    zoning, acres: acres > 0 ? parseFloat(acres.toFixed(2)) : null,
-    sqft: acres > 0 ? Math.round(acres * 43560) : null,
+    zoning,
+    acres: acres > 0 ? parseFloat(acres.toFixed(2)) : null,
+    sqft: sqftComm || (acres > 0 ? Math.round(acres * 43560) : null),
     assessed, lastSale: lastSalePrice, lastSaleYear, capRate: null,
+    yearBuilt, propertyReportUrl,
     tag, highlight: null, badge: null,
     owner: {
       entity: rawOwner,
@@ -109,7 +120,7 @@ function normalizeFeature(feature, index, anchorLat, anchorLng) {
       principal: null, agent: null, address: ownerAddr, holdingYears,
       sosUrl: `https://bsd.sos.in.gov/PublicBusinessSearch/BusinessSearch?searchValue=${encodeURIComponent(rawOwner)}`,
     },
-    geometry: null, // fetched on demand via /api/geometry
+    geometry: null,
   }
 }
 
