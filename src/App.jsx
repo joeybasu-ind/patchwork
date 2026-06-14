@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import Header from './components/Header.jsx'
 import Landing from './components/Landing.jsx'
 import MapView from './components/MapView.jsx'
@@ -20,6 +20,8 @@ export default function App() {
   const [error, setError] = useState(null)
   const [loadingParcels, setLoadingParcels] = useState(false)
   const [isDemo, setIsDemo] = useState(false)
+  const [currentCounty, setCurrentCounty] = useState('Hamilton')
+  const geometryCache = useRef({}) // parcelId → GeoJSON geometry
 
   const handleSearch = useCallback(async (q) => {
     setError(null)
@@ -49,6 +51,7 @@ export default function App() {
       setParcels([])
       setView('results')
       setLoadingParcels(true)
+      geometryCache.current = {}
 
       // Step 3 — query ArcGIS for real parcels
       try {
@@ -67,6 +70,7 @@ export default function App() {
         const data = await parcelRes.json()
         setParcels(data.parcels || [])
         setIsDemo(!!data._demo)
+        setCurrentCounty(params.county || 'Hamilton')
       } catch (parcelErr) {
         console.warn('Parcel fetch failed:', parcelErr.message)
       } finally {
@@ -77,6 +81,34 @@ export default function App() {
       setLoadingParcels(false)
     }
   }, [])
+
+  const handleSelectParcel = useCallback(async (parcel) => {
+    setSelectedParcel(parcel)
+
+    // Skip geometry fetch for demo/mock parcels or if already cached
+    if (parcel._mock || !parcel.objectId) return
+    if (geometryCache.current[parcel.id]) {
+      setSelectedParcel(p => p?.id === parcel.id ? { ...p, geometry: geometryCache.current[parcel.id] } : p)
+      return
+    }
+
+    try {
+      const res = await fetch('/api/geometry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ objectId: parcel.objectId, county: currentCounty }),
+      })
+      const data = await res.json()
+      if (data.geometry) {
+        geometryCache.current[parcel.id] = data.geometry
+        setSelectedParcel(p => p?.id === parcel.id ? { ...p, geometry: data.geometry } : p)
+        // Also update in parcels array so MapView can render the polygon
+        setParcels(ps => ps.map(p => p.id === parcel.id ? { ...p, geometry: data.geometry } : p))
+      }
+    } catch (err) {
+      console.warn('[geometry] fetch failed:', err.message)
+    }
+  }, [currentCounty])
 
   const handleNewSearch = () => {
     setView('landing')
@@ -129,7 +161,7 @@ export default function App() {
               parcels={parcels}
               anchor={anchor}
               selectedId={selectedParcel?.id}
-              onSelect={setSelectedParcel}
+              onSelect={handleSelectParcel}
             />
             {selectedParcel && (
               <CardPanel
@@ -156,7 +188,7 @@ export default function App() {
             <ResultStrip
               parcels={parcels}
               selectedId={selectedParcel?.id}
-              onSelect={setSelectedParcel}
+              onSelect={handleSelectParcel}
             />
           )}
         </div>
