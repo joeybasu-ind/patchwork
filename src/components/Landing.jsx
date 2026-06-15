@@ -5,7 +5,7 @@ const EXAMPLES = [
   'mixed-use near Carmel Arts District',
   'retail near Nickel Plate Trail in Fishers',
   'commercial near Hamilton County Courthouse Noblesville',
-  'industrial flex space near US-31 Westfield',
+  'commercial near Park Street and Grand Park Westfield',
 ]
 
 export default function Landing({ onSearch }) {
