@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 
 const EXAMPLES = [
-  'retail space near Purdue University',
-  'land near the Eli Lilly build in Lebanon',
-  'commercial corridor Rangeline Road Carmel',
+  'commercial corridor along Rangeline Road Carmel',
   'mixed-use near Carmel Arts District',
-  'commercial space near Indiana University Bloomington',
+  'retail near Nickel Plate Trail in Fishers',
+  'commercial near Hamilton County Courthouse Noblesville',
+  'industrial flex space near US-31 Westfield',
 ]
 
 export default function Landing({ onSearch }) {
