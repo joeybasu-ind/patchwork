@@ -7,10 +7,8 @@ import { getMockParcels } from './mock-data.js'
 export const ARCGIS_ENDPOINTS = {
   // FeatureServer for fast bbox search (returnCentroid supported)
   Hamilton: 'https://gis1.hamiltoncounty.in.gov/arcgis/rest/services/HamCoParcelsPublic/FeatureServer/0/query',
-  Boone: 'https://gis.boonecounty.in.gov/arcgis/rest/services/Parcels/FeatureServer/0/query',
-  Tippecanoe: 'https://gis.tippecanoe.in.gov/arcgis/rest/services/Parcels/MapServer/0/query',
-  Monroe: 'https://gishub-monroegis.hub.arcgis.com/datasets/MonroeGIS::parcels/FeatureServer/0/query',
-  statewide: 'https://gisdata.in.gov/server/rest/services/Hosted/Indiana_Parcels/FeatureServer/0/query',
+  // Boone, Tippecanoe, Monroe fall through to statewide layer
+  statewide: 'https://gisdata.in.gov/server/rest/services/Hosted/Parcel_Boundaries_of_Indiana_Current/FeatureServer/0/query',
 }
 
 const LAT_DEG_PER_MILE = 1 / 69.0
