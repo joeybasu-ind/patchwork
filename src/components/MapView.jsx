@@ -28,14 +28,23 @@ function getLoader(apiKey) {
   return loaderPromise
 }
 
-function makeZoningMarkerSvg(code, selected) {
+function holdingColor(holdingYears) {
+  if (!holdingYears) return '#4a5168'
+  if (holdingYears > 15) return '#22c55e'
+  if (holdingYears > 8) return '#f59e0b'
+  return '#4a5168'
+}
+
+function makeZoningMarkerSvg(code, selected, holdingYears) {
   const c = zc(code)
   const border = selected ? '#fff' : c.border
   const bg = selected ? '#fff' : '#161b2e'
   const fill = selected ? '#0f1117' : c.text
+  const dot = holdingColor(holdingYears)
   return `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="36">
     <rect x="2" y="2" width="56" height="24" rx="7" fill="${bg}" stroke="${border}" stroke-width="2"/>
-    <text x="30" y="17" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="${fill}">${code}</text>
+    <text x="28" y="17" text-anchor="middle" font-family="Inter,sans-serif" font-size="11" font-weight="700" fill="${fill}">${code}</text>
+    <circle cx="50" cy="14" r="4" fill="${dot}"/>
     <line x1="30" y1="26" x2="30" y2="33" stroke="${border}" stroke-width="2"/>
     <circle cx="30" cy="34" r="3" fill="${border}"/>
   </svg>`
@@ -146,7 +155,7 @@ export default function MapView({ center, zoom, parcels, anchor, selectedId, onS
 
       // Always add a zoning label marker at centroid using classic Marker
       if (parcel.lat && parcel.lng) {
-        const svg = makeZoningMarkerSvg(parcel.zoning, isSelected)
+        const svg = makeZoningMarkerSvg(parcel.zoning, isSelected, parcel.owner?.holdingYears)
         const encoded = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg)
         const marker = new window.google.maps.Marker({
           map: googleMapRef.current,

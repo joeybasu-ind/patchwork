@@ -34,17 +34,24 @@ function ZoningTip({ code }) {
 
 // ── Stat grid ──────────────────────────────────────────────────
 function StatGrid({ parcel }) {
+  const holdYears = parcel.owner?.holdingYears
+  const holdVal = holdYears ? `${holdYears} yrs` : '—'
+  const holdColor = holdYears > 15 ? '#22c55e' : holdYears > 8 ? '#f59e0b' : '#7c8499'
+
+  // Hamilton County assesses at ~85% of market; implied market ≈ assessed / 0.85
+  const impliedMarket = parcel.assessed ? Math.round(parcel.assessed / 0.85) : null
+
   const items = [
-    ['Last Sale', fmtCur(parcel.lastSale)],
-    ['Assessed', fmtCur(parcel.assessed)],
-    ['Lot Size', fmtAcres(parcel.acres)],
-    ['Cap Rate', parcel.capRate ? parcel.capRate + '%' : 'Land'],
+    ['Assessed Value', fmtCur(parcel.assessed), '#fff'],
+    ['Est. Market Value', impliedMarket ? fmtCur(impliedMarket) : '—', '#e8925a'],
+    ['Lot Size', fmtAcres(parcel.acres), '#fff'],
+    ['Held Since Acq.', holdVal, holdColor],
   ]
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: '#1e2130', borderBottom: '1px solid #1e2130' }}>
-      {items.map(([lbl, val]) => (
+      {items.map(([lbl, val, color]) => (
         <div key={lbl} style={{ background: '#0e0f0d', padding: '12px 14px', textAlign: 'center' }}>
-          <div style={{ fontSize: 17, fontWeight: 800, color: '#fff' }}>{val}</div>
+          <div style={{ fontSize: 17, fontWeight: 800, color }}>{val}</div>
           <div style={{ fontSize: 10, color: '#7c8499', marginTop: 2, fontWeight: 500 }}>{lbl}</div>
         </div>
       ))}
@@ -123,23 +130,25 @@ function FinancialsTab({ parcel }) {
   const [rate, setRate] = useState(0.072)
   const [amort, setAmort] = useState(25)
 
-  const price = parcel.lastSale || parcel.assessed || 0
+  // Use implied market value (assessed ÷ 0.85) as the price basis when no sale price
+  const impliedMarket = parcel.assessed ? Math.round(parcel.assessed / 0.85) : null
+  const price = parcel.lastSale || impliedMarket || 0
+  const priceLabel = parcel.lastSale ? 'At Last Sale Price' : impliedMarket ? 'At Est. Market Value' : 'No Valuation Available'
+  const priceNote = !parcel.lastSale && impliedMarket
+    ? 'No sale price on record — using assessed value ÷ 0.85 (Hamilton Co. avg. assessment ratio)'
+    : null
+
   const loan = Math.round(price * ltv)
   const down = price - loan
   const mr = rate / 12, n = amort * 12
   const ds = price > 0 ? Math.round((loan * mr) / (1 - Math.pow(1 + mr, -n))) : 0
-  const noi = parcel.capRate ? Math.round(price * (parcel.capRate / 100)) : null
-  const cf = noi ? noi - ds * 12 : null
-  const coc = cf != null ? ((cf / down) * 100).toFixed(1) : null
 
   const rows = [
-    ['Down Payment', fmtCur(down), '#fff'],
-    ['Loan Amount', fmtCur(loan), '#fff'],
+    ['Down Payment', down > 0 ? fmtCur(down) : '—', '#fff'],
+    ['Loan Amount', loan > 0 ? fmtCur(loan) : '—', '#fff'],
     ['Monthly Debt Service', ds > 0 ? '$' + ds.toLocaleString() : '—', '#fff'],
-    noi != null ? ['Est. Annual NOI', fmtCur(noi), '#22c55e'] : null,
-    cf != null ? ['Est. Annual Cash Flow', fmtCur(cf), cf >= 0 ? '#22c55e' : '#ef4444'] : null,
-    coc != null ? ['Cash-on-Cash Return', coc + '%', parseFloat(coc) >= 0 ? '#22c55e' : '#ef4444'] : null,
-  ].filter(Boolean)
+    ['Annual Debt Service', ds > 0 ? '$' + (ds * 12).toLocaleString() : '—', '#7c8499'],
+  ]
 
   const sliderStyle = { marginBottom: 12 }
   const labelStyle = { fontSize: 11, color: '#7c8499', marginBottom: 5 }
@@ -149,7 +158,7 @@ function FinancialsTab({ parcel }) {
       <div style={{ background: '#161b2e', borderRadius: 10, padding: 14, border: '1px solid #1e2130', marginBottom: 14 }}>
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, color: '#4f8ef7' }}>Adjust Assumptions</div>
         <div style={sliderStyle}>
-          <div style={labelStyle}>Down Payment: {Math.round((1 - ltv) * 100)}% ({fmtCur(down)})</div>
+          <div style={labelStyle}>Down Payment: {Math.round((1 - ltv) * 100)}% ({down > 0 ? fmtCur(down) : '—'})</div>
           <input type="range" min="0.5" max="0.8" step="0.05" value={ltv} onChange={e => setLtv(parseFloat(e.target.value))} />
         </div>
         <div style={sliderStyle}>
@@ -158,13 +167,16 @@ function FinancialsTab({ parcel }) {
         </div>
         <div style={sliderStyle}>
           <div style={labelStyle}>Amortization: {amort} yrs</div>
-          <input type="range" min="15" max="30" step="5" value={amort} onChange={e => setAmort(parseFloat(e.target.value))} />
+          <input type="range" min="15" max="30" step="5" value={amort} onChange={e => setAmort(parseInt(e.target.value))} />
         </div>
       </div>
       <div style={{ background: '#161b2e', borderRadius: 10, padding: 14, border: '1px solid #1e2130', marginBottom: 14 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, color: '#4f8ef7' }}>
-          At Last Sale ({fmtCur(price)})
+        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2, color: '#4f8ef7' }}>
+          {priceLabel} ({price > 0 ? fmtCur(price) : '—'})
         </div>
+        {priceNote && (
+          <div style={{ fontSize: 10, color: '#7c8499', marginBottom: 10, lineHeight: 1.5 }}>{priceNote}</div>
+        )}
         {rows.map(([k, v, color]) => (
           <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #1a1f2e' }}>
             <span style={{ fontSize: 11, color: '#7c8499' }}>{k}</span>
@@ -173,8 +185,8 @@ function FinancialsTab({ parcel }) {
         ))}
       </div>
       <div style={{ background: '#161b2e', borderRadius: 10, padding: 14, border: '1px solid #1e2130', fontSize: 11, color: '#7c8499', lineHeight: 1.6 }}>
-        <span style={{ color: '#e8925a', fontWeight: 700 }}>How this works: </span>
-        NOI estimated from cap rate at last sale price. Commercial loans typically carry 5–7 year balloon terms with 20–25 year amortization. Estimates only.
+        <span style={{ color: '#e8925a', fontWeight: 700 }}>Note: </span>
+        Indiana does not require public disclosure of commercial sale prices. Estimated market value derived from Hamilton County assessment ratio. Commercial loans typically carry 5–7 year balloon terms. Estimates only — verify with a lender.
       </div>
     </div>
   )
