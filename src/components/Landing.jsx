@@ -94,6 +94,10 @@ export default function Landing({ onSearch }) {
           ))}
         </div>
       </div>
+
+      <div style={{ fontSize: 11, color: '#3a3f52', marginTop: 12 }}>
+        © 2026 Joey Basu
+      </div>
     </div>
   )
 }
